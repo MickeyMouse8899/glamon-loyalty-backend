@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\PointController;
 use App\Http\Controllers\Api\RewardController;
+use App\Http\Controllers\Webhook\MokaPosController;
 use App\Http\Controllers\Webhook\WooCommerceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -52,7 +53,11 @@ Route::prefix('v1')->group(function () {
 
     });
 
-    Route::post('webhooks/woocommerce/{brandSlug}', [WooCommerceController::class, 'handle'])
-        ->middleware('throttle:webhook');
+    Route::prefix('webhooks')->group(function () {
+        Route::post('woocommerce/{brandSlug}', [WooCommerceController::class, 'handle'])
+            ->middleware('throttle:webhook');
+        Route::post('mokapos/{brandSlug}', [MokaPosController::class, 'handle'])
+            ->middleware('throttle:webhook');
+    });
 
 });

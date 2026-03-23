@@ -63,6 +63,7 @@
         <a href="{{ route('admin.rewards.index') }}" class="{{ request()->routeIs('admin.rewards.*') ? 'active' : '' }}">Rewards</a>
         <a href="{{ route('admin.transactions.index') }}" class="{{ request()->routeIs('admin.transactions.*') ? 'active' : '' }}">Transaksi</a>
         <a href="{{ route('admin.members.index') }}" class="{{ request()->routeIs('admin.members.*') ? 'active' : '' }}">Members</a>
+        <a href="{{ route('admin.integrations.index') }}" class="{{ request()->routeIs('admin.integrations.*') ? 'active' : '' }}">Integrations</a>
         <a href="/kasir" target="_blank">Kasir Panel</a>
     </nav>
     <div class="logout"><a href="{{ route('admin.logout') }}" onclick="return confirm('Yakin logout?')">Logout</a></div>

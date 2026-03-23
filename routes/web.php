@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\BrandController as AdminBrandController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\IntegrationController;
 use App\Http\Controllers\Admin\RewardController as AdminRewardController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Kasir\KasirController;
@@ -27,6 +28,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('rewards/{reward}/toggle', [AdminRewardController::class, 'toggle'])->name('rewards.toggle');
         Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
         Route::get('members', [TransactionController::class, 'members'])->name('members.index');
+        Route::get('integrations', [IntegrationController::class, 'index'])->name('integrations.index');
+        Route::post('integrations', [IntegrationController::class, 'store'])->name('integrations.store');
+        Route::post('integrations/{integration}/toggle', [IntegrationController::class, 'toggle'])->name('integrations.toggle');
     });
 });
 
