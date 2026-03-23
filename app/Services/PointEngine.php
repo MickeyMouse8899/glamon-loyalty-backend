@@ -6,6 +6,7 @@ use App\Jobs\SendPushNotification;
 use App\Models\Brand;
 use App\Models\BrandPointRule;
 use App\Models\PointLedger;
+use App\Models\TierRule;
 use App\Models\Transaction;
 use App\Models\UserBrandProfile;
 use Illuminate\Support\Facades\DB;
@@ -114,19 +115,27 @@ class PointEngine
             'balance_after'  => $newBalance,
         ]);
 
-        $this->updateTier($profile, $newBalance);
+        $this->updateTier($profile, $newBalance, $brandId);
 
         return $newBalance;
     }
 
-    private function updateTier(UserBrandProfile $profile, int $totalPoints): void
+    private function updateTier(UserBrandProfile $profile, int $totalPoints, int $brandId): void
     {
-        $tier = match(true) {
-            $totalPoints >= 50000 => 'platinum',
-            $totalPoints >= 20000 => 'gold',
-            $totalPoints >= 5000  => 'silver',
-            default               => 'bronze',
-        };
+        $tierRules = TierRule::where('brand_id', $brandId)
+            ->orderByDesc('min_points')
+            ->get();
+
+        if ($tierRules->isEmpty()) {
+            $tier = match(true) {
+                $totalPoints >= 50000 => 'platinum',
+                $totalPoints >= 20000 => 'gold',
+                $totalPoints >= 5000  => 'silver',
+                default               => 'bronze',
+            };
+        } else {
+            $tier = $tierRules->first(fn($r) => $totalPoints >= $r->min_points)?->tier ?? $tierRules->last()->tier;
+        }
 
         if ($profile->tier !== $tier) {
             $profile->update(['tier' => $tier]);
