@@ -69,6 +69,7 @@ class BrandController extends Controller
     {
         $rules       = BrandPointRule::where('brand_id', $brand->id)->get()->keyBy('source');
         $integration = WebstoreIntegration::where('brand_id', $brand->id)->first();
+        $brand->load('tierRules');
         return view('admin.brands.edit', compact('brand', 'rules', 'integration'));
     }
 

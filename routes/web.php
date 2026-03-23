@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\IntegrationController;
 use App\Http\Controllers\Admin\RewardController as AdminRewardController;
 use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Kasir\KasirController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('integrations', [IntegrationController::class, 'index'])->name('integrations.index');
         Route::post('integrations', [IntegrationController::class, 'store'])->name('integrations.store');
         Route::post('integrations/{integration}/toggle', [IntegrationController::class, 'toggle'])->name('integrations.toggle');
+
+        Route::middleware(\App\Http\Middleware\SuperAdminAuth::class)->group(function () {
+            Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
+            Route::post('users', [UserManagementController::class, 'store'])->name('users.store');
+            Route::post('users/{user}/toggle', [UserManagementController::class, 'toggleActive'])->name('users.toggle');
+            Route::post('users/{user}/role', [UserManagementController::class, 'updateRole'])->name('users.role');
+        });
     });
 });
 

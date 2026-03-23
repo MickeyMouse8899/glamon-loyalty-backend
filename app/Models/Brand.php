@@ -24,6 +24,11 @@ class Brand extends Model
         return $this->hasMany(BrandPointRule::class);
     }
 
+    public function tierRules()
+    {
+        return $this->hasMany(TierRule::class)->orderBy('min_points');
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class);

@@ -16,6 +16,15 @@ class KasirController extends Controller
 
     public function index()
     {
+        if (!session('admin_user_id')) {
+            return redirect()->route('admin.login');
+        }
+
+        $user = User::find(session('admin_user_id'));
+        if (!$user || !$user->isKasir()) {
+            return redirect()->route('admin.login');
+        }
+
         $brands = Brand::where('is_active', true)->get();
         return view('kasir.index', compact('brands'));
     }
@@ -25,9 +34,7 @@ class KasirController extends Controller
         $request->validate(['phone' => 'required|string']);
 
         $phone = $this->normalizePhone($request->phone);
-        $user = User::where('phone', $phone)
-            ->with('brandProfiles.brand')
-            ->first();
+        $user  = User::where('phone', $phone)->with('brandProfiles.brand')->first();
 
         if (!$user) {
             return response()->json(['found' => false, 'message' => 'Member tidak ditemukan.']);
@@ -58,8 +65,7 @@ class KasirController extends Controller
             'amount'   => 'required|numeric|min:1000',
         ]);
 
-        $invoice = 'KSR-' . strtoupper(Str::random(10));
-
+        $invoice     = 'KSR-' . strtoupper(Str::random(10));
         $transaction = $this->pointEngine->earnPoints(
             userId: $request->user_id,
             brandId: $request->brand_id,
@@ -84,17 +90,14 @@ class KasirController extends Controller
         $request->validate(['code' => 'required|string']);
 
         $redemption = Redemption::where('redemption_code', strtoupper($request->code))
-            ->with(['user', 'reward.brand'])
-            ->first();
+            ->with(['user', 'reward.brand'])->first();
 
         if (!$redemption) {
             return response()->json(['valid' => false, 'message' => 'Kode tidak ditemukan.']);
         }
-
         if ($redemption->status === 'claimed') {
             return response()->json(['valid' => false, 'message' => 'Kode sudah pernah digunakan.']);
         }
-
         if ($redemption->status === 'expired' || $redemption->expires_at < now()) {
             return response()->json(['valid' => false, 'message' => 'Kode sudah kadaluarsa.']);
         }
@@ -102,13 +105,13 @@ class KasirController extends Controller
         return response()->json([
             'valid'      => true,
             'redemption' => [
-                'id'        => $redemption->id,
-                'code'      => $redemption->redemption_code,
-                'reward'    => $redemption->reward->name,
-                'brand'     => $redemption->reward->brand->name,
-                'member'    => $redemption->user->name,
-                'phone'     => $redemption->user->phone,
-                'expires_at'=> $redemption->expires_at,
+                'id'         => $redemption->id,
+                'code'       => $redemption->redemption_code,
+                'reward'     => $redemption->reward->name,
+                'brand'      => $redemption->reward->brand->name,
+                'member'     => $redemption->user->name,
+                'phone'      => $redemption->user->phone,
+                'expires_at' => $redemption->expires_at,
             ],
         ]);
     }
@@ -118,17 +121,13 @@ class KasirController extends Controller
         $request->validate(['code' => 'required|string']);
 
         $redemption = Redemption::where('redemption_code', strtoupper($request->code))
-            ->with(['user', 'reward'])
-            ->first();
+            ->with(['user', 'reward'])->first();
 
         if (!$redemption || $redemption->status !== 'pending' || $redemption->expires_at < now()) {
             return response()->json(['success' => false, 'message' => 'Kode tidak valid atau sudah kadaluarsa.']);
         }
 
-        $redemption->update([
-            'status'     => 'claimed',
-            'claimed_at' => now(),
-        ]);
+        $redemption->update(['status' => 'claimed', 'claimed_at' => now()]);
 
         return response()->json([
             'success' => true,

@@ -14,7 +14,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'email', 'phone', 'google_id',
         'avatar', 'birth_date', 'gender',
-        'password', 'is_active'
+        'password', 'is_active', 'fcm_token', 'role'
     ];
 
     protected $hidden = [
@@ -23,10 +23,15 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'birth_date' => 'date',
-        'is_active' => 'boolean',
-        'password' => 'hashed',
+        'birth_date'        => 'date',
+        'is_active'         => 'boolean',
+        'password'          => 'hashed',
     ];
+
+    public function isSuperAdmin(): bool { return $this->role === 'superadmin'; }
+    public function isAdmin(): bool { return in_array($this->role, ['superadmin', 'admin']); }
+    public function isKasir(): bool { return in_array($this->role, ['superadmin', 'admin', 'kasir']); }
+    public function isMember(): bool { return $this->role === 'member'; }
 
     public function brandProfiles()
     {

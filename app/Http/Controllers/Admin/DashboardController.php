@@ -10,12 +10,13 @@ use App\Models\User;
 use App\Models\UserBrandProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class DashboardController extends Controller
 {
     public function loginForm()
     {
-        if (session('admin_logged_in')) {
+        if (session('admin_user_id')) {
             return redirect()->route('admin.dashboard');
         }
         return view('admin.login');
@@ -23,15 +24,35 @@ class DashboardController extends Controller
 
     public function login(Request $request)
     {
-        $input   = $request->input('password');
-        $correct = 'password123';
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
+        ]);
 
-        if ($input !== $correct) {
-            return back()->withErrors(['password' => 'Password salah.']);
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return back()->withErrors(['email' => 'Email atau password salah.']);
         }
 
-        session(['admin_logged_in' => true]);
+        if (!$user->isKasir()) {
+            return back()->withErrors(['email' => 'Akun tidak memiliki akses panel ini.']);
+        }
+
+        if (!$user->is_active) {
+            return back()->withErrors(['email' => 'Akun tidak aktif.']);
+        }
+
+        session([
+            'admin_user_id'   => $user->id,
+            'admin_user_name' => $user->name,
+            'admin_user_role' => $user->role,
+        ]);
         session()->save();
+
+        if ($user->isKasir() && !$user->isAdmin()) {
+            return redirect('/kasir');
+        }
 
         return redirect()->route('admin.dashboard');
     }
@@ -44,28 +65,25 @@ class DashboardController extends Controller
 
     public function index()
     {
-        if (!session('admin_logged_in')) {
+        $user = User::find(session('admin_user_id'));
+        if (!$user || !$user->isAdmin()) {
             return redirect()->route('admin.login');
         }
 
         $stats = [
-            'total_members'      => User::count(),
+            'total_members'      => User::where('role', 'member')->count(),
             'total_transactions' => Transaction::count(),
             'total_points_given' => Transaction::sum('points_earned'),
             'total_redemptions'  => Redemption::count(),
         ];
 
         $recentTransactions = Transaction::with(['user', 'brand'])
-            ->latest()
-            ->limit(10)
-            ->get();
+            ->latest()->limit(10)->get();
 
-        $pointsPerBrand = Brand::withSum('transactions as total_points', 'points_earned')
-            ->get();
+        $pointsPerBrand = Brand::withSum('transactions as total_points', 'points_earned')->get();
 
         $membersByTier = UserBrandProfile::select('tier', DB::raw('count(*) as total'))
-            ->groupBy('tier')
-            ->get();
+            ->groupBy('tier')->get();
 
         return view('admin.dashboard', compact('stats', 'recentTransactions', 'pointsPerBrand', 'membersByTier'));
     }
