@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\User;
+use Google\Auth\Credentials\ServiceAccountCredentials;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,31 +31,63 @@ class SendPushNotification implements ShouldQueue
             return;
         }
 
-        $serverKey = config('services.fcm.server_key');
+        try {
+            $accessToken = $this->getAccessToken();
+            $projectId   = $this->getProjectId();
 
-        if (!$serverKey) {
-            Log::warning('FCM server key tidak dikonfigurasi.');
-            return;
-        }
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type'  => 'application/json',
+            ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                'message' => [
+                    'token'        => $user->fcm_token,
+                    'notification' => [
+                        'title' => $this->title,
+                        'body'  => $this->body,
+                    ],
+                    'data'         => array_map('strval', $this->data),
+                    'android'      => [
+                        'notification' => [
+                            'sound'        => 'default',
+                            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                        ],
+                    ],
+                ],
+            ]);
 
-        $response = Http::withHeaders([
-            'Authorization' => 'key=' . $serverKey,
-            'Content-Type'  => 'application/json',
-        ])->post('https://fcm.googleapis.com/fcm/send', [
-            'to'           => $user->fcm_token,
-            'notification' => [
-                'title' => $this->title,
-                'body'  => $this->body,
-                'sound' => 'default',
-            ],
-            'data' => $this->data,
-        ]);
+            if (!$response->successful()) {
+                Log::error('FCM V1 gagal', [
+                    'user_id'  => $this->userId,
+                    'response' => $response->body(),
+                ]);
+            }
 
-        if (!$response->successful()) {
-            Log::error('FCM gagal kirim notifikasi', [
-                'user_id'  => $this->userId,
-                'response' => $response->body(),
+        } catch (\Exception $e) {
+            Log::error('FCM V1 exception', [
+                'user_id' => $this->userId,
+                'error'   => $e->getMessage(),
             ]);
         }
+    }
+
+    private function getAccessToken(): string
+    {
+        $credentialsPath = storage_path('app/firebase-credentials.json');
+        $scopes          = ['https://www.googleapis.com/auth/firebase.messaging'];
+
+        $credentials = new ServiceAccountCredentials($scopes, $credentialsPath);
+        $token       = $credentials->fetchAuthToken();
+
+        return $token['access_token'];
+    }
+
+    private function getProjectId(): string
+    {
+        $credentials = json_decode(
+            file_get_contents(storage_path('app/firebase-credentials.json')),
+            true
+        );
+
+        return $credentials['project_id'];
     }
 }
